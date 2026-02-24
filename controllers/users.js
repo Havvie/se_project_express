@@ -2,13 +2,13 @@ const User = require("../models/user");
 const { BadRequestError, NotFoundError } = require("../utils/errors");
 
 // GET /users
-
 const getUsers = (req, res, next) => {
   User.find({})
     .then((users) => res.status(200).send(users))
     .catch(next);
 };
 
+// POST /users
 const createUser = (req, res, next) => {
   const { name, avatar } = req.body || {};
 
@@ -20,22 +20,20 @@ const createUser = (req, res, next) => {
     .then((user) => res.status(201).send(user))
     .catch((err) => {
       if (err.name === "ValidationError") {
-        return next(new BadRequestError(err.message));
+        return next(new BadRequestError("Invalid data"));
       }
       return next(err);
     });
 };
 
+// GET /users/:userId
 const getUser = (req, res, next) => {
   const { userId } = req.params;
 
   User.findById(userId)
-    .orFail(() => {
-      throw new NotFoundError("User not found");
-    })
+    .orFail(() => new NotFoundError("User not found"))
     .then((user) => res.status(200).send(user))
     .catch((err) => {
-      console.error(err.name, err.message);
       if (err.name === "CastError") {
         return next(new BadRequestError("Invalid user id"));
       }
@@ -43,4 +41,8 @@ const getUser = (req, res, next) => {
     });
 };
 
-module.exports = { getUsers, createUser, getUser };
+module.exports = {
+  getUsers,
+  createUser,
+  getUser
+};
