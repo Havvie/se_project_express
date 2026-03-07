@@ -1,5 +1,9 @@
 const ClothingItem = require("../models/clothingItem");
-const { BadRequestError, NotFoundError } = require("../utils/errors");
+const {
+  BadRequestError,
+  NotFoundError,
+  ForbiddenError,
+ } = require("../utils/errors");
 
 const createItem = (req, res, next) => {
   const { name, weather, imageUrl } = req.body || {};
@@ -28,15 +32,23 @@ const getItems = (req, res, next) => {
 const deleteItem = (req, res, next) => {
   const { itemId } = req.params;
 
-  ClothingItem.findByIdAndDelete(itemId)
-    .orFail(() => new NotFoundError("Item not found"))
-    .then((deletedItem) => res.status(200).send(deletedItem))
-    .catch((err) => {
-      if (err.name === "CastError") {
-        return next(new BadRequestError("Invalid item id"));
+  ClothingItem.findById(itemId)
+    .orFail(() => {
+      throw new NotFoundError("Item not found");
+  })
+    .then((item) => {
+      if (item.owner.toString() !== req.user._id) {
+        throw new ForbiddenError("You cannot delete someone else's item");
       }
-      return next(err);
-    });
+      return ClothingItem.findByIdAndDelete(itemId);
+    })
+      .then((deletedItem) => res.status(200).send(deletedItem))
+      .catch((err) => {
+        if (err.name === "CastError") {
+          return next(new BadRequestError("Invalid item id"));
+        }
+        return next(err);
+      });
 };
 
 const likeItem = (req, res, next) => {
