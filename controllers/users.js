@@ -13,6 +13,10 @@ const {
 const createUser = (req, res, next) => {
   const { name, avatar, email, password } = req.body || {};
 
+  if (password.length < 8) {
+    return next(new BadRequestError("Password must be at least 8 characters"));
+  }
+
   if (!name || !avatar || !email || !password) {
     return next(new BadRequestError("Invalid data"));
   }
@@ -60,14 +64,14 @@ const login = (req, res, next) => {
     })
     .catch((err) => {
       // findUserByCredentials throws UnauthorizedError
-      if (err.statusCode === 401) {
+      if (err.name === "UnauthorizedError") {
         return next(new UnauthorizedError("Incorrect email or password"));
       }
       return next(err);
     });
 };
 
-// GET /users;me
+// GET /users/me
 const getCurrentUser = (req, res, next) => {
   User.findById(req.user._id)
     .orFail(() => {
