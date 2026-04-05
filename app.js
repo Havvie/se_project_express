@@ -1,10 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require("cors");
+const cors = require('cors');
 const { errors } = require('celebrate');
 const mainRouter = require('./routes/index');
-const { HTTP_STATUS_CODES } = require('./utils/errors');
+const { HTTP_STATUS_CODES, NotFoundError } = require('./utils/errors');
+const { requestLogger, errorLogger } = require('./middlewares/logger');
 
 const app = express();
 const { PORT = 3001 } = process.env;
@@ -21,18 +22,29 @@ mongoose
 app.use(express.json());
 app.use(cors());
 
-// 1. Request logger BEFORE routes
+// Request logger BEFORE routes
 app.use(requestLogger);
 
-// 2. Routes
+// Crash test endpoint
+app.get('/crash-test', () => {
+  setTimeout(() => {
+    throw new Error('Server will crash now');
+  }, 0);
+  });
+
+// Routes
 app.use('/', mainRouter);
 
-// 3. Error logger AFTER routes, BEFORE error handlers
-app.use(errorLogger);
+// 404 handler (last middleware)
+app.use((req, res, next) => {
+  next(new NotFoundError('Requested resource not found'));
+});
 
-// 4. Error handlers (in this specfic order)
+app.use(errorLogger);
 app.use(errors());
-app.use((err, req, res, next) => {
+
+// Error handlers (in this specfic order)
+app.use((err, req, res, _next) => {
   const {
     statusCode = HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR,
     message,
@@ -41,15 +53,8 @@ app.use((err, req, res, next) => {
   res.status(statusCode).send({
     message:
       statusCode === HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR
-        ? 'An error occured on the server'
+        ? 'An error occurred on the server'
         : message,
-  });
-});
-
-// 5. 404 handler (last middleware)
-app.use((req, res) => {
-  res.status(HTTP_STATUS_CODES.NOT_FOUND).send({
-    message: "Requested resource not found"
   });
 });
 
