@@ -4,8 +4,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const { errors } = require('celebrate');
 const mainRouter = require('./routes/index');
-const { HTTP_STATUS_CODES, NotFoundError } = require('./utils/errors');
+const NotFoundError = require('./utils/errors/NotFoundError');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
+const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
 const { PORT = 3001 } = process.env;
@@ -43,20 +44,8 @@ app.use((req, res, next) => {
 app.use(errorLogger);
 app.use(errors());
 
-// Error handlers (in this specfic order)
-app.use((err, req, res, _next) => {
-  const {
-    statusCode = HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR,
-    message,
-  } = err;
-
-  res.status(statusCode).send({
-    message:
-      statusCode === HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR
-        ? 'An error occurred on the server'
-        : message,
-  });
-});
+// Error handler
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Listening on port ${PORT}`);

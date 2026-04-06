@@ -2,20 +2,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const { JWT_SECRET } = require("../utils/config");
-const {
-  BadRequestError,
-  NotFoundError,
-  ConflictError,
-  UnauthorizedError,
-} = require("../utils/errors");
+const BadRequestError = require("../utils/errors/BadRequestError");
+const NotFoundError = require("../utils/errors/NotFoundError");
+const ConflictError = require("../utils/errors/ConflictError");
 
 // POST /signup
 const createUser = (req, res, next) => {
   const { name, avatar, email, password } = req.body || {};
-
-  if (password.length < 8) {
-    return next(new BadRequestError("Password must be at least 8 characters"));
-  }
 
   if (!name || !avatar || !email || !password) {
     return next(new BadRequestError("Invalid data"));
@@ -59,16 +52,12 @@ const login = (req, res, next) => {
 
   return User.findUserByCredentials(email, password)
     .then((user) => {
-      const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: "7d" });
+      const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
       return res.send({ token });
     })
-    .catch((err) => {
-      // findUserByCredentials throws UnauthorizedError
-      if (err.name === "UnauthorizedError") {
-        return next(new UnauthorizedError("Incorrect email or password"));
-      }
-      return next(err);
-    });
+    .catch(next);
 };
 
 // GET /users/me
@@ -107,7 +96,7 @@ const updateCurrentUser = (req, res, next) => {
         return next(new BadRequestError("Invalid user id"));
       }
       return next(err);
-    })
+    });
 };
 
 module.exports = {
